@@ -1,0 +1,83 @@
+DONE:
+- check we can have extra operations in an algebra (so e.g. a ring also qualifies as an abelian group)
+- consider making the algebra a map, :carrier => carrier
+- consider making the structures maps, :signature => ops/arities, :laws => laws, (other functions e.g. :commutative?)
+- can write an 'arity enforcer' macro?
+- add some more structures (groups, additive abelian groups, rings)
+- a way of extending algebraic theories (monoid -> group, ab-group -> ring) but test properly!
+- put "arrow-name" in a new enhancing topos layer, which has separate tests
+- move the generic topos tests to a separate package
+- add 'parameter spaces': use either meta info, or just arrays like [X - -] as an alternative to integer arities.
+- calculate the endomorphism monoid of an algebra, with its right action as a monoid-action
+- separate out a function that verifies a single algebraic law, use this to implement ":commutative?" for algebras
+- write build-arrow (it will be an almost trivial macro). Note formal concept of 'arrowoids==multiaries'
+- add 'topos enhancer' with a 'truth' function that makes omega into a Heyting algebra
+- write for-all[x X yY] - includes is-true(h) where h maps somewhere into O. Check coincides with src->1-true->O.
+- calculate group of units of a monoid
+- write subobject [a A] <condition>.
+- test if an arrow is a monic: f: X->Y: for all x,y in X, fx=fy => x=y
+- add tests verifying fancy laws for groups and Heyting algebras
+
+REJECTED:
+- consider making the topos structures (product, exponent. etc) into maps
+
+
+-- Tests that multiarization includes regularization (it no longer needs to)
+
+     one-Y (set-arrow the-1 Y (constantly :b))
+     one-X (set-arrow the-1 X (constantly 3))
+
+     (is (= (set-arrow V Z {true "r" false "q"}))
+            (multiop V-X one-Y)
+     )
+     (is (= (set-arrow Y Z {:a "r" :b "r"})
+            (multiop one-X ((sets :id) Y))
+     ))
+
+-- notes on how we got rid of regularizaion:
+ 
+ problem: (= unit (* x (inverse x))) won't work because the former arrow is based at 1.
+Various bodgey solutions...
+Java-Bile had a separate operator "eq" to be used instead of equals.
+Could: precompose all units with the source before testing the laws
+Ideally: (unit) would return the 1->unit composed with source->1. Can we do this?
+Would then get rid of the special handling of 0-ary operators.
+Would this mean not having to bother with regularization?
+We could have a "modal source" which remembers what the current source is... yuk!
+
+work out exactly why regularization & this are necessary...
+Best solution: use a modified "unit-precomposed" version of the map, before testing the laws,
+and then get rid of regularization in the multiary function builder - or rather, separate it out.
+
+Debugging enforce-arity (non-macro version) I find a 1-line expression that fails: how to fix?
+(let [x 8 f (fn[] x)] (eval `(~f)))
+Problem is that x here isn't in scope (or something) - how to bind it in?
+
+Do the operators of an algebra need to be "strictly multiary", so that we can check the arities properly
+and have identities like (= (unit) (op (inverse x) x)) ? Let's say they do.
+
+Have a distinction: arrows are one thing: the other is:
+multiary == arrowoid == a function that acts on n elements, returns an element
+Then: in our 'high-level' DSL we will only deal with elements, never arrowoids.
+- replace "make-constant-arrow" by "to-1" everywhere
+- An object ought to "know" what topos it's in, because it is a pain having to pass thie information
+around separately from the object. Would it be bearable to have the object be a map, and then have a
+":topos" entry as we've done in the algebraic structure? And then we don't need it there. Note 
+issue here with the topos of actions over a monoid...
+So use another keyword, e.g. :ambient. We'll be extracting this all the time - is the pain confined
+to within topos-of-sets? Mostly. { :ambient sets :payload x } Actually, we won't need it for algebraic
+structures, so will ultimately be able to use the same keyword. Rename that to ":ambient".
+- Similarly for arrows
+We can have (set-of x y z...) instead of #(x y z...)
+
+
+(let [
+        A (set-of 1 2 3)
+        B (set-of :x :y)
+        f (set-arrow A B {1 :x 2 :y 3 :x})
+        [A-n _ A-projections mul-A] ((topos :product) (repeat op-arity A))                                                               
+        [B-n _ B-projections mul-B] ((topos :product) (repeat op-arity B))
+        _ (println "mul-B =" mul-B)
+        f-n (build-multiary [x A-n] 
+           (mul-B (for [p A-projections] (f (p x)))))
+] f-n)

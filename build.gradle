@@ -1,0 +1,33 @@
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
+
+apply plugin: 'idea'
+apply plugin: 'java'
+apply plugin: 'application'
+
+buildDir = 'target'
+project.buildDir = 'target'
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+mainClassName='com.fdilke.spikes.BewlSpike'
+
+project.version = (version == "unspecified") ? "SNAPSHOT" : version // default to snapshot
+
+idea {
+    project {
+        jdkName = '1.7'
+        languageLevel = '1.7'
+    }
+}
+
+dependencies {
+    compile "javassist:javassist:3.12.1.GA"
+
+    testCompile group: 'junit', name: 'junit', version: '4.10'
+}
+
+repositories {
+    mavenCentral()
+}
+

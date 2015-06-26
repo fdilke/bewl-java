@@ -1,0 +1,276 @@
+About Bewl
+
+Background/Motivation
+
+I reached topos theory by a very indirect route, initially starting from a rediscovery of Los' ultraproduct theorem, and so to 
+the theory of ultrafilters. This is essentially a theory of limit operations on algebraic structures.  
+Ultrafilters also point to an algebraic definition of topology, because the theory of compact Hausdorff spaces can be
+explained in terms of algebras over the ultrafilter monad. But it seems that the key idea is to take double exponentials
+over the 'truth object' in sets, regarded as a Heyting algebra: this is a special case of the subobject classifier S
+in a topos. So it seemed that topos theory was the right place to look for a proper generalization of the ultrafilter theory. 
+
+After reading Colin McLarty's book about topoi, I became convinced that maths should be "refactored" over an arbitrary
+topos, and that the set theory normally used as a foundation is "an annoying legacy platform like DOS 2.0". The main
+obstacle to doing this is the lack of a satisfactory theory of finite objects in a topos. So for example we can do
+ring theory in a topos, and even define the basic theory of the Jacobson radical and Schur's lemma, but we're then
+stuck because there is no way to define finiteness conditions.
+
+These two strands come together in H.Volger's 1975 paper. He proves a general version of Los' theorem in a topos, and defines 
+several ultrafilter-related definitions of finiteness. But the theory founders because none of these definitions seem quite
+correct. Volger also doesn't make use of the Mitchell-Benabou internal language of a topos. It seems possible that the theory
+should be expressed in this language, and that the structures he defines need to be further internalized, but perhaps in 1975
+it wasn't clear how to do this.
+
+I also noticed that the theory of parity of permutations stands out as an oddity in the topos of sets, which could perhaps be
+generalized in an arbitrary topos. Explicitly, the theory gives for every "finite" object X, i.e. with X => 2^2^X epic, a
+morphism of groups Aut X => Aut 2. This suggests a link with the Volger theory. Also the construction of determinants over a
+field F is strikingly similar: for every vector space V with V => F^F^V, it gives us a morphism of monoids End V => End F.
+In both cases, the construction involves using the given finite object to construct something which has the same actions,
+but can then be identified as the exponent used in the double-exponential (2 or F respectively). So for any group action of
+G on a finite X, we can construct 2 as a G-set (with a nontrivial action).
+
+Also worth noticing is that Aut S is always an abelian group, in fact elementary abelian of exponent 2, and that it might 
+be possible to consider an object X finite whenever there is a "sum" natural transformation A^X => A for every abelian group 
+object A. The theory of permutation parity uses this sort of mechanism. But here the problem is that we can't express what 
+would be the most obvious condition on such a "sum", i.e. that for each a in A and x in X it sends the associated 
+'characteristic function' in A^X to a.
+
+I also investigated properties of the topos of sets over a monoid M. This construction gives a rich source of non-Boolean
+topoi. The topos is Boolean only if M is a group, in which case the Volger definition of finiteness reduces to the usual one. 
+Over a general monoid, the situation is less clear. 
+
+The case where M = N* (the natural numbers as a multiplicative monoid) is instructive. In this case we have the topos of
+sets-with-a-single-endomorphism, and the subobject classifier S has two connected components,  "... => 2 => 1 => 0 => 0" 
+and "-infinity => -infinity". It is rigid in the sense that it doesn't have any automorphisms, but the automorphism group 
+object, regarded as a set, has two elements. So there is a nontrivial automorphism, but it isn't a global element. 
+This opens up the possibility of a theory of permutation parity over M.   
+
+To study this properly, I started writing software to do basic topos computations. The initial idea was to implement some
+basic topoi (finite sets, finite monoid actions) and make the Mitchell-Benabou internal language into a "domain specific language"
+(DSL).
+
+The Bewl DSL 
+
+The topos 'API' uses a language of "dots" and "arrows" (the word 'object' is over-used in computer science, so I didn't want
+to have 'objects' in my topoi). Dots can be compared using "==" equality; arrows have to use the equals() method. There are 
+structures expressing ProductDiagram, EqualizerDiagram etc which encode the relevant universal properties. 
+
+Implementing the topos of finite sets was then straightforward. The unit tests for all this are intended to be topos-independent,
+so there is a concept of 'fixtures' for a specific topos, and then the tests written on top of this layer are all abstract. 
+
+I then added an experimental DSL. It works by mapping "dots" () and "arrows" into classes and composable functions 
+respectively. The idea is that if we "bind" classes Source and Target to dots A and B respectively, then arrows between them
+can be represented by a type Arrow<Source, Target> which maps Dot<Source> to Dot<Target>. There's also a lambda construction
+which enables us to build arrows. This is all a bit cumbersome to use because of the generics, but it has the advantage of
+being type-safe. When it's got a bit further, I'd like to reimplement it in Scala, which will hopefully enable the same
+level of type-safety but with a more compact notation. Or in a language like Ruby which also has support for DSLs.
+
+One part of the Bewl code that is unquestionably a success is the machinery for universal algebra. Using reflection and
+annotations, a class (e.g. Group.java) can express the axioms for an algebraic structure, and then we can build instances of this
+by supplying the relevant operators as arrows (e.g. a binary arrow for multiplication) and having the laws be verified 
+automatically. The structure definitions are concise, and they can be composed in an obvious way, so we can have Ring be an 
+extension of AbelianGroup, and build on Monoid to define MonoidAction, with the monoid of scalars appearing as a "parameter
+space". It should even be straightforward to add predicates and first-order quantifiers to this, so that we can do model
+theory as opposed to universal algebra. 
+
+But the Bewl DSL is still a work in progress, currently almost as hard to use as the 'topos machine code' it's intended 
+to replace. The initial uses of it are:
+- given an object, construct its endomorphism monoid, with the original object as a right action
+- express the subobject classifier as a Heyting algebra
+I've done both of these in 'topos machine code' - it should be an interesting exercise to do them again in the DSL, adding
+refinements if necessary. The real test of the DSL will be in implementing the topos of actions.
+
+To Do
+
+In the Bewl DSL, instead of the existing binary "Product<X, Y>" element, have a BiProduct<X, Y> which extends a (non-typesafe)
+Product element. Then have the algebra builder use these instead of multiarrows. 
+If necessary have an intermediate phase where the multiarrow maps are passed to the constructor, and converted. But fix them
+afterwards. Unit should implement Power as well, presumably... can do that within framework of ProductDiagram?
+Start by: have a product (superclass of biproduct) and tests for it, then consider making Builder optionally use it, then
+force all calls to Builder to use it. Idea is: Builder should work entirely at the Bewl level, no multiarrows.
+... We can't have BiProduct extends Product. Maybe Product is a bad idea... or, it should be an interface?? Can't.
+Maybe not ready for this yet. -- done it.
+Now how to convert between MultiArrow<DOT, ARROW> and Arrow<Product, E> ...?
+Can do unwrapMultiArrow like unwrapBiArrow, reveals the underlying multiarrow.
+
+Add parallel tests so that we test both 'endomorphisms()' and 'endomorphismsTrad()' (the 'traditional' machine code versions).
+
+Calculate automorphisms as well. (Again there should be both 'new' and 'trad' versions).
+
+Calculate endomorphisms/automorphisms of an algebra.
+
+Add predicates and first-order axioms to the Algebra/ModelBuilder. 
+
+Calculate the Frattini subalgebra of an arbitrary algebra. (For Aut S that should always be the trivial group - make that a test.)
+For a 'set', i.e. an algebra with no laws, it should be empty.
+
+Add predicates to test if an arbitrary arrow is monic/epic, using the quantifiers. Would an internalized
+version of this be helpful, as a better way to calculate endo/automorphisms?
+
+Add a concept of 'canonical product / exponent'. Should presumably use a weak hash map. How to test this?
+
+Use this mechanism to switch between new/trad:
+@RunWith(Theories.class)
+public class SomeTest {
+	@Theory
+	public void testTheNewTheoriesStuff(int value) {
+		// test which involves int value	
+	}
+	public static @DataPoints int[] values = {1,2,3,4,5};
+}
+
+Implement the topos of M-sets for M a monoid object. (I'm guessing the set-style formulae still work in an arbitrary topos).
+Doing this in the Bewl DSL should get me to the point of fluency, and the language to a higher level of usability.
+
+Can we sort out the type system for dots? e.g. have ExponentialDot<xx> which extends Dot but has other methods? At the
+moment we have a laundry list of largely unimplemented methods in Dot<> for special cases.
+
+Using Clojure
+
+As the Bewl project was getting more and more bogged down in the mechanics of type checking and other plumbing,
+I started experimenting with Clojure. The danger here is that performance degrades - we just have to hope
+that the added flexibility of Clojure is worth it. Deciding factor: it seemed less and less likely that Java 
+was going to be a good vehicle for expressing a DSL for the internal language.
+It also seemed likely that I'd benefit from the lessons learnt in translating topos calculations into Java, and
+at least have roughly the right software architecture when doing it all again in Clojure.
+I wrote my own mini-object system (as part of the experimental "Discomfitjure" project), but there seemed
+less and less reason to not use the built-in Clojure one which is now fairly stable, and probably makes
+better use of the underlying JVM.
+But it seemed reasonable to NOT use this object system for dots and arrows. Instead, you can go
+(f :src) (f :tgt) (f g) (f g h) <== BIG notational advantage, I hope
+for arrows, and for dots (. topos identity x) 
+Or is there a better way to make objects also be fns?? Continue with this for now.
+
+(the alternative is bad performance-wise: for there to be a "(x :identity)"? If x wraps a set, there
+could be an (x :underlying) ... but then we'll invoke this every time we want to do something to the set :))
+
+The topos API in Clojure
+
+Used to have a product-diagram-protocol with methods:
+product, projections, multiply 
+instead, we express the diagram as [XxY [X Y] projections multiply]
+
+similarly, the terminator diagram is expressed as [the-1 make-constant-arrow]
+the equalizer diagram as [equalizer factorize]
+the exponential diagram as [evaluation transpose]
+the subobject classifier diagram as [truth characteristic]
+where for any monic m, (characteristic m) returns the relevant bits from a pullback diagram: [chi factorize]
+
+main topos was a protocol:
+(defprotocol topos-protocol
+ "a protocol for topoi"
+ (terminator-diagram [this] "get our 1")
+ (subobject-classifier [this] "get our omega diagram")
+ (product-diagram [this components] "create a product diagram")
+ (equalizer-diagram [this parallel-arrow-1 parallel-arrow-2] "create an equalizer diagram")
+ (exponential-diagram [this tgt src] "create an exponential diagram")
+ (id [this dot] "get the identity arrow for a dot") 
+)
+
+now just a map of keys to functions (product, equalizer, exponential, id) and objects
+(terminator, subobject-classifier) 
+
+*** TO DO ***
+Use Clojure 1.4
+Port the 'algebra builder', then define:
+Endomorphism monoid / Automorphism group / Heyting algebra of truth
+Monads and double-exponential monads, ==> coproducts ... ?
+Change topos-of-sets to be 'lazy': store the function instead of the map
+do this as: (1) change :map to :fn. (2) get rid of all those zipmaps!
+Note should we always use memfn? Yes unless it's already a map. How do we tell? "map?".
+Does anything change, apart from the equality test? Try in stages.
+Worth creating a parallel "lazy-sets"? No.
+Do performance tests first? Yes
+check how composition works, currently uses "map-map" - should change that
+can't use 'reverse map' in characteristic - so may not need contrib.xx
+in the equalizer construction, is there a way to re-use the fn without re-wrapping it?
+fix equality ... all done, but doesn't make a lot of difference to performance at the mo
+because we are still constructing the exponential object non-lazily. No obvious way round this.
+Will at some point need a function that turns a multiarrow, [P f] where P is a product diagram and
+f an arrow from its product object, into a 'multiary', an n-ary function that acts on maps g, h, ...
+with a common source (or 1 if not specified, as per previous convention) by multiplying them over the
+product and precomposing with the multiarrow.
+Not yet clear how the equivalent of buildArrow and buildAlgebra should work. Recap the Java versions.
+Note we are not going to have a type layer, so buildArrow likely to be trivial / unnecessary?
+
+AlgebraBuilder.build() takes:
+- a topos
+- a "dot" representing the carrier
+- an 'axiom class' representing a bunch of <methods=ops and laws, annotated>
+- an "op map" String -> Arrow<Product, Carrier>
+Returns an instance of the axiom class, which has methods corresponding to the operations.
+The tests make sure that: the axiom scheme has to be tagged @Axioms; an empty one is ok;
+there aren't surplus operations in the provided opmap; all the required ops are provided,
+with the right names and arities; we can have a "pointed magma" with no laws;
+the simplest law (pointed set with endomorphism) is checked;
+it's ok if the endo preserves the distinguished point, not otherwise
+
+In Clojure, plan for:
+- We'll supply a bunch of already-multiarized operations, then just verify the laws.
+- so, function is (verify-algebra topos carrier opmap [ops laws])
+and "Groups" IS: [signature-of-groups group-laws]
+The laws work like this:
+(defn commutative-multiplication [{:keys [multiply]} x y]
+   (= (multiply x y) (multiply y x))
+)
+where x and y will be filled in beforehand with the identity arrow on the carrier,
+and 'multiply' will pick out the right multiary function from the map
+We could even have (commutative multiply) be a macro expanding to a law. Or:
+(defn left-unit [{:keys [unit multiply]} x]
+   (= (multiply unit x) x)
+)
+This is trickier. "unit" maps 1->carrier, so do we have to arrange for it to be premultiplied somewhere?
+Is the right place inside the 'multiarization', so that given
+(multiary arrow1 arrow2 ...)
+the arrows will all be checked to make sure they have the right source, and premultiplied otherwise?
+Check where this is done in Java. Part of AlgebraBuilder?
+Should 'group' be a protocol? No
+Where to put special group methods e.g. "is commutative"? Should just be functions.
+In Java we have "group" extending "monoid" - here we'll just re-use some of the laws.
+Will also have to add meta-data for "parameter spaces" (e.g. left monoid action on a set) - later.
+In Java the laws have names, and there is a concept of "optional law" which you can ask to have checked...
+
+Seems like: the operations should be ready-multiarized, and there is no way to check their arity :(
+Need to understand metadata / arity better?
+(:arglists (meta #'str)) is a way to find the arity of "str", but how does this work, why the #' ??
+this does it: (defn arg-count [f]
+  (let [m (first (.getDeclaredMethods (class f)))
+        p (.getParameterTypes m)]
+    (alength p)))
+
+...done. There is also a concept of "meta-algebraic laws" which abstract the concepts of associativity,
+commutativity, units, inversion, etc etc. 
+Next:
+- test if an algebra map is a homomorphism AND SUPPORT PARAMETER SPACES
+- calculate the 'hom object' X^Y where X, Y are algebras, and its right action as a multiary
+- Would it be an optimization to insist that a product of 1 object is always itself with trivial multiplier?
+- should enhance-arity be a macro, taking given arguments, so we don't use fn[]? 
+Probably, but there should be a suite of performance tests that check this. 
+How would we construct maps out of 0? Something like: given X, map it to false in omega, then
+factorize given we constructed 0 using an equalizer...? McLarty?
+
+Construct the topos of right actions over a monoid M. Consider the fixtures.
+We'll use a small noncommutative monoid over sets. How about
+M = { 1, x, y } where xa===x, ya===y? We've defined all products, so just verify this is associative.
+abc certainly associates if a is x or y (it'll just be a, either way) If it's 1 we have to check 
+(1b)c == 1(bc), which it does. []
+Might be better to use the opposite of this, given we are dealing with right modules. Then:
+x===ax, y===ay, and a right M-set is:
+a set S with x and y acting as (right) projections, subject to: yx = x.
+which means: say they project onto X and Y, respectively; then X >= Y.
+Must the projections act the same way... consider s in S. Then
+Can sx != sy?
+Consider M as right M-module over itself: x sends everything to x ; y to y ... above condition is wrong
+Note for any M, any M-set X: left multiplication by x sends M => X and the image is xM, so...
+worth studying the injective M-sets?? what are these?? Can describe for e.g. M = <N, +>?
+also, what are the injective monoids??
+
+Background on projections: an idempotent f:X->X essentially divides X into pointed sets,
+and if X is an M-set (M={1,x,y} above), the conditions on x,y just say that the partition is
+the same, with the component sets possibly being "re-pointed", i.e. we have just divided X
+into "doubly-pointed" sets.
+
+a thought: Suppose M (an arbitrary monoid again) has a topology. Can we make the continuous
+M-sets into a topos? Probably S = mega has restrictions on the right ideals (they need to be closed?)
+and we'd just verify: (1) exponents still make sense, (2) this new S still has the pullback property.
+ 
